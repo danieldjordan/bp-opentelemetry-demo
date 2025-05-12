@@ -81,7 +81,7 @@ version: '3.9'
 services:
   # BindPlane Collector (replacing the original OpenTelemetry collector)
   bindplane-collector:
-    image: ghcr.io/observiq/bindplane-otel-collector:latest
+    image: ghcr.io/observiq/bindplane-agent:latest
     container_name: bindplane-collector
     hostname: bindplane-collector
     deploy:
@@ -113,7 +113,7 @@ services:
 
   # BindPlane Server
   bindplane:
-    image: ghcr.io/observiq/bindplane:latest
+    image: ghcr.io/observiq/bindplane-ee:latest
     container_name: bindplane
     hostname: bindplane
     deploy:
