@@ -76,7 +76,6 @@ echo -e "\n${YELLOW}Creating Docker Compose configuration files...${NC}"
 
 # Create docker-compose-bindplane.yml
 cat > docker-compose-bindplane.yml << 'EOF'
-version: '3.9'
 
 services:
   # BindPlane Collector (replacing the original OpenTelemetry collector)
@@ -320,7 +319,6 @@ EOF
 
 # Create docker-compose.override.yml
 cat > docker-compose.override.yml << 'EOF'
-version: '3.9'
 
 services:
   # Remove the original otel-collector service
