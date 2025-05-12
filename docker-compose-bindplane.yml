@@ -1,0 +1,91 @@
+version: '3.9'
+
+services:
+  # Remove the original otel-collector service and replace with bindplane-collector
+  # BindPlane Collector (replacing the original OpenTelemetry collector)
+  bindplane-collector:
+    image: ghcr.io/observiq/bindplane-otel-collector:latest
+    container_name: bindplane-collector
+    hostname: bindplane-collector
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    command: ["--config=/etc/bindplane/config.yaml"]
+    volumes:
+      - ./bindplane/collector-config.yaml:/etc/bindplane/config.yaml
+    ports:
+      - "${ENVOY_PORT_COLLECTOR}"                     # Envoy Tracing port
+      - "${ENVOY_PORT_HEALTH_CHECK}"                  # Envoy Health Check port
+      - "${COLLECTOR_PORT_GRPC}:${COLLECTOR_PORT_GRPC}"                       # OTLP over gRPC receiver
+      - "${COLLECTOR_PORT_HTTP}:${COLLECTOR_PORT_HTTP}"                       # OTLP over HTTP receiver
+      - "${COLLECTOR_PORT_ZPAGES}"                    # ZPages port
+      - "${COLLECTOR_PROMETHEUS_PORT}"                # Prometheus receiver
+      - "4319:4319"                                   # OTLP Prometheus exporter
+      - "9411"                                        # Zipkin receiver (deprecated)
+    environment:
+      - ENVOY_PORT=${ENVOY_PORT}
+      - FEATURE_FLAG_SERVICE_ADDR=${FEATURE_FLAG_SERVICE_ADDR}
+      - KAFKA_SERVICE_ADDR=${KAFKA_SERVICE_ADDR}
+      # If using OpAMP, uncomment these:
+      # - OPAMP_ENDPOINT=ws://bindplane:3001/v1/opamp
+      # - OPAMP_LABELS=service.name=demo-collector,service.version=latest
+      # - OPAMP_SECRET_KEY=${YOUR_SECRET_KEY}
+    networks:
+      - demo
+    depends_on:
+      - jaeger
+      - kafka
+
+  # BindPlane Server
+  bindplane:
+    image: ghcr.io/observiq/bindplane:latest
+    container_name: bindplane
+    hostname: bindplane
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped
+    ports:
+      - "3001:3001"  # Web UI and API
+    volumes:
+      - ./bindplane/server-config.yaml:/etc/bindplane/config.yaml
+      - bindplane-data:/var/lib/bindplane
+    environment:
+      - BINDPLANE_LICENSE=${BINDPLANE_LICENSE}
+      - BINDPLANE_USERNAME=${BINDPLANE_USERNAME:-admin}
+      - BINDPLANE_PASSWORD=${BINDPLANE_PASSWORD:-admin}
+      - BINDPLANE_REMOTE_URL=http://bindplane:3001
+    networks:
+      - demo
+
+  # PostgreSQL for BindPlane (optional - for production setups)
+  bindplane-postgres:
+    image: postgres:15-alpine
+    container_name: bindplane-postgres
+    hostname: bindplane-postgres
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=bindplane
+      - POSTGRES_USER=bindplane
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bindplane}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - demo
+
+volumes:
+  bindplane-data:
+  postgres-data:
+
+networks:
+  demo:
+    external: true
